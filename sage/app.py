@@ -1,19 +1,11 @@
-import os
-import sys
 from typing import Optional, Type
-from rich.console import RenderableType
-
-from rich.syntax import Syntax
-from rich.traceback import Traceback
-from rich.tree import Tree
 
 from textual.app import App
 from textual.driver import Driver
 from textual.reactive import Reactive
-from textual.widgets import   ScrollView, Header
-from renderables.list import List
-from widgets import Footer, SearchPrompt
-from textual_inputs import TextInput
+from textual.widgets import  ScrollView
+from .renderables.list import List
+from .widgets import Footer, SearchPrompt
 
 
 class Sage(App):
@@ -72,6 +64,3 @@ class Sage(App):
     async def watch_search_prompt(self, show: bool) -> None:
         self.search_prompt_widget.visible = show
         await self.search_prompt_widget.focus()
-
-
-Sage.run(log="textual.log")

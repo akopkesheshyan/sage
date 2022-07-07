@@ -5,6 +5,7 @@ from .schemas import SearchResult
 
 class Stackoverflow():
     domain = "https://api.stackexchange.com/2.3"
+
     def __init__(self, session: aiohttp.ClientSession) -> None:
         self.client = session
 
