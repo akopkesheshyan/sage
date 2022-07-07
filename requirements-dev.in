@@ -1,0 +1,11 @@
+# Include package requirements
+-c requirements.txt
+
+# Dev/test tools
+flake8
+safety
+pydocstyle
+piprot
+pytest
+pytest-cov
+pytest-asyncio
