@@ -2,6 +2,7 @@ from typing import List
 import aiohttp
 import asyncio
 import importlib
+import itertools
 
 from .schemas import SearchResult
 
@@ -26,4 +27,4 @@ class Search():
             for provider in providers:
                 results.append(provider.query(message))
             data = await asyncio.gather(*results)
-            return data
+            return list(itertools.chain.from_iterable(data))
