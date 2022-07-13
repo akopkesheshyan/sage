@@ -5,5 +5,5 @@ from datetime import datetime
 class SearchResult(object):
     title: str
     link: str
-    description: str = ""
+    description: str = " " # TODO: temp keep it not empty
     date: datetime = datetime.now()

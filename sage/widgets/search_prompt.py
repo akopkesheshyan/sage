@@ -3,15 +3,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
 import rich.box
+from rich.align import Align
+from rich.padding import Padding
 from rich.columns import Columns
 from rich.console import Console
-from rich.panel import Panel
 from rich.style import Style
-from rich.syntax import Syntax
 from rich.text import Text
 from textual import events
+from textual.keys import Keys
 from textual.reactive import Reactive
 from textual.widget import Widget
+from textual.layouts.grid import GridLayout
 
 CONSOLE = Console()
 
@@ -21,9 +23,10 @@ def conceal_text(segment: str) -> str:
     return "•" * len(segment)
 
 class SearchPrompt(Widget):
+    has_focus = False
     value: Reactive[str] = Reactive("")
     cursor: Tuple[str, Style] = (
-        "|",
+        "│",
         Style(
             color="white",
             blink=True,
@@ -62,24 +65,35 @@ class SearchPrompt(Widget):
         yield "value", value
 
     def on_mount(self) -> None:
-        self.layout_size = 3
+        self.layout_size = 1
 
     def render(self) -> Columns:
         """
         Produce a Panel object containing placeholder text or value
         and cursor.
         """
+        prefix = ""
         if self.has_focus:
             segments = self._render_text_with_cursor()
+            prefix = "/"
         else:
             if len(self.value) == 0:
                 segments = [self.placeholder]
             else:
                 segments = [self.value]
 
-        text = Text.assemble(*segments)
+        text = Text.assemble(prefix, *segments)
+        mode = Align.left(
+            Padding(
+                "[bold]{}[/]".format(self.app.mode),
+                pad=(0, 1, 0, 1),
+                style="black on blue",
+                expand=False,
+            )
+        )
 
-        return Columns([text], expand=True)
+        help = self.make_key_text()
+        return Columns([mode, text, help], expand=False)
 
     @property
     def _visible_width(self):
@@ -125,6 +139,7 @@ class SearchPrompt(Widget):
             event (events.Focus): A Textual Focus event
         """
         self.has_focus = True
+        self.refresh(True)
 
     async def on_blur(self, event: events.Blur) -> None:
         """Handle Blur events
@@ -133,6 +148,47 @@ class SearchPrompt(Widget):
             event (events.Blur): A Textual Blur event
         """
         self.has_focus = False
+
+    async def on_key(self, event: events.Key) -> None:
+        """Handle key events
+
+        Args:
+            event (events.Key): A Textual Key event
+        """
+        if event.key == "left":
+            self._cursor_left()
+        elif event.key == "right":
+            self._cursor_right()
+        elif event.key == "home":
+            self._cursor_home()
+        elif event.key == "end":
+            self._cursor_end()
+        elif event.key == "ctrl+h":
+            self._key_backspace()
+            event.stop()
+        elif event.key == "delete":
+            self._key_delete()
+            event.stop()
+        elif event.key == "escape":
+            self.reset()
+        elif event.key == "enter":
+            self.search()
+            event.stop()
+        elif len(event.key) == 1 and event.key.isprintable():
+            self._key_printable(event)
+
+    def search(self):
+        self.placeholder = self.value
+        self.reset()
+        self.app.mode = "LOADING"
+
+    def reset(self):
+        self.app.mode = "NORMAL"
+        self.value = ""
+        self.has_focus = False
+        self._cursor_position = 0
+        self._text_offset = 0
+        self.refresh(True)
 
     def _update_offset_left(self):
         """
@@ -207,36 +263,27 @@ class SearchPrompt(Widget):
             self._cursor_position += 1
             self._update_offset_right()
 
-    async def on_key(self, event: events.Key) -> None:
-        """Handle key events
 
-        Args:
-            event (events.Key): A Textual Key event
-        """
-        BACKSPACE = "ctrl+h"
-        if event.key == "left":
-            self._cursor_left()
-        elif event.key == "right":
-            self._cursor_right()
-        elif event.key == "home":
-            self._cursor_home()
-        elif event.key == "end":
-            self._cursor_end()
-        elif event.key == BACKSPACE:
-            self._key_backspace()
-            await self._emit_on_change(event)
-        elif event.key == "delete":
-            self._key_delete()
-            await self._emit_on_change(event)
-        elif event.key == "escape":
-            raise Exception("TODO: clean and exit")
-            await self._emit_on_change(event)
-        elif len(event.key) == 1 and event.key.isprintable():
-            self._key_printable(event)
-            await self._emit_on_change(event)
 
-    async def _emit_on_change(self, event: events.Key) -> None:
-        """Emit custom message class on Change events"""
-        event.stop()
-        # await self.emit(self._on_change_message_class(self))
-
+    def make_key_text(self) -> Text:
+        """Create text containing all the keys."""
+        text = Text(
+            style="grey50 on default",
+            no_wrap=True,
+            overflow="ellipsis",
+            justify="right",
+            end="",
+        )
+        for binding in self.app.bindings.shown_keys:
+            key_display = (
+                binding.key.upper()
+                if binding.key_display is None
+                else binding.key_display
+            )
+            key_text = Text.assemble(
+                (f" {key_display} ", "grey50 on default"),
+                f" {binding.description} ",
+                meta={"@click": f"app.press('{binding.key}')", "key": binding.key},
+            )
+            text.append_text(key_text)
+        return text
