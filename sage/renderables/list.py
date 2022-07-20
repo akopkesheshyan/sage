@@ -71,8 +71,8 @@ class List(Generic[T]):
     # def __str__(self) -> str:
     #     return str(self.renderables())
     #
-    # def renderables(self) -> List[T]:
-    #     return self.list[self.start_rendering : self.end_rendering]
+    def renderables(self):
+        return self.list[self.start_rendering : self.end_rendering]
 
     def reset(self) -> None:
         self.__pointer = -1
@@ -104,8 +104,11 @@ class List(Generic[T]):
         else:
             self.__pointer = pointer
 
-    def previous(self) -> None:
+    def previous(self) -> Optional[Union[str, tuple]]:
         self.pointer -= 1
+        return self.selected
 
-    def next(self) -> None:
+    def next(self) -> Optional[Union[str, tuple]]:
         self.pointer += 1
+        return self.selected
+

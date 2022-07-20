@@ -1,21 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
+from typing import  Any, List, Optional, Tuple, Union
 
-import rich.box
-from rich.align import Align
-from rich.padding import Padding
-from rich.columns import Columns
-from rich.console import Console
 from rich.style import Style
 from rich.text import Text
 from textual import events
 from textual.keys import Keys
 from textual.reactive import Reactive
 from textual.widget import Widget
-from textual.layouts.grid import GridLayout
-
-CONSOLE = Console()
+from sage.enums import Mode
 
 
 def conceal_text(segment: str) -> str:
@@ -67,7 +60,7 @@ class SearchPrompt(Widget):
     def on_mount(self) -> None:
         self.layout_size = 1
 
-    def render(self) -> Columns:
+    def render(self) -> Text:
         """
         Produce a Panel object containing placeholder text or value
         and cursor.
@@ -82,18 +75,8 @@ class SearchPrompt(Widget):
             else:
                 segments = [self.value]
 
-        text = Text.assemble(prefix, *segments)
-        mode = Align.left(
-            Padding(
-                "[bold]{}[/]".format(self.app.mode),
-                pad=(0, 1, 0, 1),
-                style="black on blue",
-                expand=False,
-            )
-        )
+        return Text.assemble(prefix, *segments)
 
-        help = self.make_key_text()
-        return Columns([mode, text, help], expand=False)
 
     @property
     def _visible_width(self):
@@ -155,35 +138,36 @@ class SearchPrompt(Widget):
         Args:
             event (events.Key): A Textual Key event
         """
-        if event.key == "left":
+        if event.key == Keys.Left:
             self._cursor_left()
-        elif event.key == "right":
+        elif event.key == Keys.Right:
             self._cursor_right()
         elif event.key == "home":
             self._cursor_home()
         elif event.key == "end":
             self._cursor_end()
-        elif event.key == "ctrl+h":
+        elif event.key == Keys.ControlH:
             self._key_backspace()
             event.stop()
-        elif event.key == "delete":
+        elif event.key == Keys.Delete:
             self._key_delete()
             event.stop()
-        elif event.key == "escape":
+        elif event.key == Keys.Escape:
             self.reset()
-        elif event.key == "enter":
+        elif event.key == Keys.Enter:
             self.search()
             event.stop()
         elif len(event.key) == 1 and event.key.isprintable():
             self._key_printable(event)
+            event.stop()
 
     def search(self):
         self.placeholder = self.value
         self.reset()
-        self.app.mode = "LOADING"
+        self.app.mode = Mode.LOADING
 
     def reset(self):
-        self.app.mode = "NORMAL"
+        self.app.mode = Mode.NORMAL
         self.value = ""
         self.has_focus = False
         self._cursor_position = 0
@@ -263,27 +247,3 @@ class SearchPrompt(Widget):
             self._cursor_position += 1
             self._update_offset_right()
 
-
-
-    def make_key_text(self) -> Text:
-        """Create text containing all the keys."""
-        text = Text(
-            style="grey50 on default",
-            no_wrap=True,
-            overflow="ellipsis",
-            justify="right",
-            end="",
-        )
-        for binding in self.app.bindings.shown_keys:
-            key_display = (
-                binding.key.upper()
-                if binding.key_display is None
-                else binding.key_display
-            )
-            key_text = Text.assemble(
-                (f" {key_display} ", "grey50 on default"),
-                f" {binding.description} ",
-                meta={"@click": f"app.press('{binding.key}')", "key": binding.key},
-            )
-            text.append_text(key_text)
-        return text
